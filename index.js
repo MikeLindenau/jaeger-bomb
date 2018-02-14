@@ -15,7 +15,6 @@ const tags = {
 }
 
 module.exports = function JaegerBomb(options) {
-  console.log('latest version')
   options = options || {}
   const seneca = this
   const serviceName = options.serviceName
