@@ -3,6 +3,7 @@ const Tracer = require('jaeger-client').initTracer
 const opentracing = require('opentracing')
 const pkg = require('./package.json')
 const { internalAction, getPattern, getPlugin, applyTags } = require('./utils')
+const { defaultsDeep } = require('lodash')
 
 const VERSION = pkg.version
 const SERVICE_NAME = pkg.name
@@ -17,30 +18,31 @@ const tags = {
 module.exports = function JaegerBomb(options) {
   options = options || {}
   const seneca = this
+  const conf = (options.jaeger && options.jaeger.config) || {}
+  const opts = (options.jaeger && options.jaeger.options) || {}
   const serviceName = options.serviceName
-  const serviceVersion = options.serviceVersion || '0.1.0'
-  const flushIntervalMs = options.flushIntervalMs || 10
-  const logSpans = options.logSpans || false
+  const serviceVersion = options.serviceVersion || VERSION
 
-  assert(serviceName, 'JeagerBomb/service name is required.')
+  assert(serviceName, 'JaegerBomb/service name is required.')
 
-  const tracerConf = {
-    jaeger: {
-      serviceName,
-      reporter: {
-        logSpans,
-        flushIntervalMs
-      }
-    },
-    jaegerOptions: {
-      tags: {
-        [`${SERVICE_NAME}.version`]: VERSION,
-        [`${serviceName}.version`]: serviceVersion
-      }
+  const jaegerDefaultConfig = {
+    serviceName,
+    reporter: {
+      flushIntervalMs: 10,
+      logSpans: false
     }
   }
 
-  const tracer = Tracer(tracerConf.jaeger, tracerConf.options)
+  const jaegerDefaultOptions = {
+    tags: {
+      [`${SERVICE_NAME}.version`]: VERSION,
+      [`${serviceName}.version`]: serviceVersion
+    }
+  }
+
+  const jaegerConfig = defaultsDeep({}, jaegerDefaultConfig, conf)
+  const jaegerOptions = defaultsDeep({}, jaegerDefaultOptions, opts)
+  const tracer = Tracer(jaegerConfig, jaegerOptions)
 
   seneca.inward(jaegerInward)
   seneca.outward(jaegerOutward)
